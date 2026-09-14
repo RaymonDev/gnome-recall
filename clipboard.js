@@ -87,6 +87,7 @@ export class ClipboardMonitor {
         ]);
         this._privateMode = false;
         this._enableImages = true;
+        this._cancellable = new Gio.Cancellable();
 
         // Ensure cache directory exists
         GLib.mkdir_with_parents(this._cacheDir, 0o755);
@@ -180,6 +181,7 @@ export class ClipboardMonitor {
      */
     _readTextClipboard() {
         this._clipboard.get_text(CLIPBOARD_TYPE, (_clipboard, text) => {
+            if (!this._clipboard) return; // destroyed while the read was pending
             if (text && text.length > 0 && text !== this._lastText) {
                 this._lastText = text;
                 const entry = this._createTextEntry(text);
@@ -218,10 +220,11 @@ export class ClipboardMonitor {
                 imageMime,
                 -1, // max size
                 outputStream,
-                null, // cancellable
-                (source, result) => {
+                this._cancellable,
+                (selection, result) => {
                     try {
-                        this._selection.transfer_finish(result);
+                        selection.transfer_finish(result);
+                        if (!this._clipboard) return; // destroyed mid-transfer
                         outputStream.close(null);
 
                         const data = outputStream.steal_as_bytes();
@@ -304,6 +307,7 @@ export class ClipboardMonitor {
      */
     destroy() {
         this.stop();
+        this._cancellable.cancel();
         this._onChangeCallbacks = [];
         this._clipboard = null;
         this._selection = null;

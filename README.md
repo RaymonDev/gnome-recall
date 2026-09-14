@@ -171,6 +171,15 @@ gnome-recall/
 - After editing the schema, run `glib-compile-schemas schemas/`.
 - After editing JavaScript, log out and back in — `gnome-extensions disable` / `enable` reloads the stylesheet but not the code.
 
+To build the bundle for [extensions.gnome.org](https://extensions.gnome.org):
+
+```bash
+gnome-extensions pack -f -o dist \
+  --extra-source=clipboard.js --extra-source=historyManager.js \
+  --extra-source=ui --extra-source=LICENSE \
+  "$(pwd)"
+```
+
 The popup is built on GNOME Shell's own style classes (`popup-menu-content`, `popup-menu-item`, `search-entry`, `button`), so it inherits the active theme, light/dark mode and accent color with no hard-coded colors.
 
 ---

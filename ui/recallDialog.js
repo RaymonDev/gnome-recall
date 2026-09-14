@@ -296,12 +296,21 @@ export class RecallDialog {
         this._grabModal();
 
         // Focus search bar after a small delay
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+        this._clearTimeout('_focusTimeoutId');
+        this._focusTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+            this._focusTimeoutId = 0;
             if (this._isOpen) {
                 this._searchBar.focus();
             }
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    _clearTimeout(prop) {
+        if (this[prop]) {
+            GLib.Source.remove(this[prop]);
+            this[prop] = 0;
+        }
     }
 
     /**
@@ -313,6 +322,7 @@ export class RecallDialog {
 
         this._ungrabModal();
         this._hideClearConfirmation();
+        this._clearTimeout('_focusTimeoutId');
 
         // Animate out
         this._backdrop.ease({
@@ -589,7 +599,9 @@ export class RecallDialog {
 
         // If paste-on-select is enabled, simulate Ctrl+V after a short delay
         if (this._settings.get_boolean('paste-on-select')) {
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+            this._clearTimeout('_pasteTimeoutId');
+            this._pasteTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                this._pasteTimeoutId = 0;
                 this._simulatePaste();
                 return GLib.SOURCE_REMOVE;
             });
@@ -740,6 +752,8 @@ export class RecallDialog {
      */
     destroy() {
         this.close();
+        this._clearTimeout('_focusTimeoutId');
+        this._clearTimeout('_pasteTimeoutId');
         this._clearList();
         this._hideClearConfirmation();
         this._virtualKeyboard = null;

@@ -281,7 +281,7 @@ export default class RecallPreferences extends ExtensionPreferences {
 
         const aboutGroup = new Adw.PreferencesGroup({
             title: 'Recall — Clipboard History',
-            description: 'A Windows 11-style clipboard history manager for GNOME.\n\nVersion 1.0\n© 2024-2026 RaymonDev',
+            description: `Clipboard history for GNOME Shell.\n\nVersion ${this.metadata['version-name'] ?? ''}\n© 2024–2026 RaymonDev · MIT License`,
         });
         aboutPage.add(aboutGroup);
 
