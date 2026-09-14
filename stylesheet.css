@@ -1,24 +1,17 @@
-/* ============================================================
-   GNOME Recall — Clipboard History Extension Stylesheet
-   Built on top of the shell's own theme classes (popup-menu-content,
-   popup-menu-item, search-entry, button) so the popup automatically
-   matches the user's GTK theme, light/dark mode, and accent color
-   instead of a fixed, hardcoded palette.
-   ============================================================ */
+/*most colors come from the shells own classes (popup-menu-content, popup-menu-item, search-entry, button)
+  so this only does spacing + the few accent bits. -st-accent-color follows the system accent*/
 
-/* ---- Backdrop overlay ---- */
+/*dim everything behind the popup*/
 .recall-backdrop {
   background-color: rgba(0, 0, 0, 0.35);
 }
 
-/* ---- Main dialog container ----
-   Background/border/radius/shadow all come from .popup-menu-content. */
 .recall-dialog {
   padding: 0;
   margin: 0;
 }
 
-/* ---- Header area ---- */
+/*header: title, private badge, clear all + settings*/
 .recall-header {
   padding: 12px 14px 8px 14px;
 }
@@ -55,7 +48,6 @@
   icon-size: 16px;
 }
 
-/* ---- Private mode indicator ---- */
 .recall-private-indicator {
   border-radius: 8px;
   padding: 4px 10px;
@@ -69,33 +61,27 @@
   color: #e66100;
 }
 
-/* ---- Search bar ---- */
+/*search*/
 .recall-search-container {
   padding: 0 10px 8px 10px;
 }
 
-/* Colors/focus ring for .recall-search-entry come from .search-entry,
-   which follows the system accent color automatically. */
 .recall-search-entry StIcon {
   icon-size: 14px;
   opacity: 0.6;
 }
 
-/* ---- Separator ---- */
 .recall-separator {
   height: 1px;
   margin: 0 12px;
   background-color: rgba(127, 127, 127, 0.2);
 }
 
-/* ---- Scrollable list area ---- */
 .recall-scroll-view {
   padding: 4px 6px;
 }
 
-/* ---- Individual clipboard item ----
-   Base background/hover/focus states come from .popup-menu-item so
-   rows look exactly like every other menu/list row in the shell. */
+/*list rows, hover/focus states are inherited from popup-menu-item*/
 .recall-item {
   padding: 8px 10px;
   margin: 1px 0;
@@ -107,13 +93,13 @@
   border: 1px solid st-transparentize(-st-accent-color, 0.75);
 }
 
+/*st only takes a width on border-left, color has to go through border-color*/
 .recall-item-pinned {
   border: none;
   border-left: 3px;
   border-color: st-transparentize(-st-accent-color, 0.4);
 }
 
-/* ---- Item content ---- */
 .recall-item-content {
   spacing: 8px;
 }
@@ -124,6 +110,7 @@
   padding: 2px 0 0 0;
 }
 
+/*type icons use the adwaita named colors, they read fine on light and dark*/
 .recall-item-icon-image {
   color: #26a269;
   opacity: 0.85;
@@ -176,14 +163,12 @@
   color: -st-accent-color;
 }
 
-/* ---- Image thumbnail ---- */
 .recall-item-image-preview {
   border-radius: 6px;
   border: 1px solid rgba(127, 127, 127, 0.2);
   background-color: rgba(127, 127, 127, 0.1);
 }
 
-/* ---- Color swatch ---- */
 .recall-color-swatch {
   width: 16px;
   height: 16px;
@@ -191,7 +176,7 @@
   border: 1px solid rgba(127, 127, 127, 0.3);
 }
 
-/* ---- Item action buttons ---- */
+/*pin + delete buttons on the right of each row*/
 .recall-item-actions {
   spacing: 2px;
 }
@@ -238,7 +223,7 @@
   opacity: 0.9;
 }
 
-/* ---- Empty state ---- */
+/*shown when the list is empty*/
 .recall-empty-state {
   padding: 48px 24px;
   spacing: 12px;
@@ -261,7 +246,7 @@
   text-align: center;
 }
 
-/* ---- Footer / status bar ---- */
+/*footer with the item count*/
 .recall-footer {
   padding: 6px 12px 8px 12px;
   border-top: 1px solid rgba(127, 127, 127, 0.15);
@@ -272,13 +257,11 @@
   opacity: 0.4;
 }
 
-/* ---- Confirm dialog overlay ---- */
+/*clear all confirmation*/
 .recall-confirm-backdrop {
   background-color: rgba(0, 0, 0, 0.4);
 }
 
-/* Background/border/radius for .recall-confirm-dialog come from
-   .popup-menu-content. */
 .recall-confirm-dialog {
   padding: 20px;
   spacing: 14px;
@@ -298,7 +281,6 @@
   spacing: 8px;
 }
 
-/* Sizing overrides only — color/hover/focus states come from .button. */
 .recall-confirm-btn-cancel,
 .recall-confirm-btn-danger {
   padding: 8px 18px;
@@ -314,7 +296,7 @@
   background-color: #c01c28;
 }
 
-/* ---- Section headers (Pinned / Recent) ---- */
+/*pinned / recent headers*/
 .recall-section-header {
   padding: 10px 12px 4px 12px;
   spacing: 6px;

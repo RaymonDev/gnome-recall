@@ -1,9 +1,3 @@
-/* historyManager.js — Persistent clipboard history management for GNOME Recall
- *
- * Manages an in-memory array of ClipboardEntry objects with JSON persistence.
- * Handles pinning, deletion, search, and size limits.
- */
-
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
@@ -11,20 +5,13 @@ import { ClipboardEntry } from './clipboard.js';
 
 const HISTORY_FILENAME = 'history.json';
 
-/**
- * HistoryManager — Stores, persists, and queries clipboard history.
- */
+//keeps the entries in memory and mirrors them to ~/.cache/gnome-recall/history.json on every change
 export class HistoryManager {
-    /**
-     * @param {object} opts
-     * @param {Gio.Settings} opts.settings — GSettings instance
-     */
     constructor(opts = {}) {
         this._settings = opts.settings || null;
         this._entries = [];
         this._onUpdateCallbacks = [];
 
-        // Paths
         this._cacheDir = GLib.build_filenamev([
             GLib.get_user_cache_dir(), 'gnome-recall'
         ]);
@@ -35,22 +22,17 @@ export class HistoryManager {
             this._cacheDir, 'images'
         ]);
 
-        // Ensure directories exist
         GLib.mkdir_with_parents(this._cacheDir, 0o755);
         GLib.mkdir_with_parents(this._imagesDir, 0o755);
 
-        // Load persisted history
         this._loadFromDisk();
 
-        // Apply clear-on-boot if needed
+        //"clear on restart" setting, pinned stuff survives this
         if (this._settings && this._settings.get_boolean('clear-on-boot')) {
             this.clearUnpinned();
         }
     }
 
-    /**
-     * Get the current max history size from settings.
-     */
     get maxSize() {
         if (this._settings) {
             return this._settings.get_int('max-history-size');
@@ -58,12 +40,7 @@ export class HistoryManager {
         return 50;
     }
 
-    /**
-     * Get all entries, optionally with pinned on top.
-     * @param {object} [opts]
-     * @param {boolean} [opts.pinnedOnTop] — Whether to sort pinned items first
-     * @returns {ClipboardEntry[]}
-     */
+    //newest first, pinned ones bubble to the top unless the setting says otherwise
     getEntries(opts = {}) {
         const pinnedOnTop = opts.pinnedOnTop !== undefined ? opts.pinnedOnTop :
             (this._settings ? this._settings.get_boolean('pinned-on-top') : true);
@@ -76,25 +53,14 @@ export class HistoryManager {
         return [...this._entries];
     }
 
-    /**
-     * Get only pinned entries.
-     */
     getPinnedEntries() {
         return this._entries.filter(e => e.pinned);
     }
 
-    /**
-     * Get only unpinned entries.
-     */
     getUnpinnedEntries() {
         return this._entries.filter(e => !e.pinned);
     }
 
-    /**
-     * Search entries by query text.
-     * @param {string} query
-     * @returns {ClipboardEntry[]}
-     */
     search(query) {
         if (!query || query.length === 0) return this.getEntries();
 
@@ -108,23 +74,17 @@ export class HistoryManager {
         });
     }
 
-    /**
-     * Add a new entry to history.
-     * Deduplicates against the most recent entry.
-     * @param {ClipboardEntry} entry
-     */
     addEntry(entry) {
-        // Deduplicate: skip if identical to the most recent non-pinned entry
+        //copying the same thing twice in a row just bumps the timestamp
         const recent = this._entries.find(e => !e.pinned);
         if (recent && entry.type === 'text' && recent.type === 'text' &&
             recent.content === entry.content) {
-            // Update timestamp of existing entry instead
             recent.timestamp = entry.timestamp;
             this._saveToDisk();
             return;
         }
 
-        // Also check if the same text already exists deeper in history — move it to top
+        //if it exists further down the list, move it to the top instead of duplicating
         const existingIdx = this._entries.findIndex(e =>
             !e.pinned && e.type === entry.type && e.type === 'text' && e.content === entry.content
         );
@@ -132,21 +92,14 @@ export class HistoryManager {
             this._entries.splice(existingIdx, 1);
         }
 
-        // Add to front
         this._entries.unshift(entry);
 
-        // Enforce size limit (only remove unpinned entries)
         this._enforceLimit();
 
         this._saveToDisk();
         this._emitUpdate();
     }
 
-    /**
-     * Toggle the pinned state of an entry.
-     * @param {string} id — Entry ID
-     * @returns {boolean} New pinned state
-     */
     togglePin(id) {
         const entry = this._entries.find(e => e.id === id);
         if (!entry) return false;
@@ -157,17 +110,12 @@ export class HistoryManager {
         return entry.pinned;
     }
 
-    /**
-     * Delete a single entry by ID.
-     * @param {string} id
-     */
     deleteEntry(id) {
         const idx = this._entries.findIndex(e => e.id === id);
         if (idx < 0) return;
 
         const entry = this._entries[idx];
 
-        // If it's an image, clean up the cached file
         if (entry.imagePath) {
             this._deleteFile(entry.imagePath);
         }
@@ -177,9 +125,6 @@ export class HistoryManager {
         this._emitUpdate();
     }
 
-    /**
-     * Clear all unpinned entries.
-     */
     clearUnpinned() {
         const unpinned = this._entries.filter(e => !e.pinned);
         for (const entry of unpinned) {
@@ -192,9 +137,6 @@ export class HistoryManager {
         this._emitUpdate();
     }
 
-    /**
-     * Clear absolutely everything including pinned items.
-     */
     clearAll() {
         for (const entry of this._entries) {
             if (entry.imagePath) {
@@ -206,39 +148,22 @@ export class HistoryManager {
         this._emitUpdate();
     }
 
-    /**
-     * Get the total count of entries.
-     */
     get length() {
         return this._entries.length;
     }
 
-    /**
-     * Register a callback for history updates.
-     * @param {function} callback
-     */
     onUpdate(callback) {
         this._onUpdateCallbacks.push(callback);
     }
 
-    /**
-     * Get an entry by ID.
-     * @param {string} id
-     * @returns {ClipboardEntry|null}
-     */
     getEntry(id) {
         return this._entries.find(e => e.id === id) || null;
     }
 
-    // ---- Private methods ----
-
-    /**
-     * Enforce the max history size by removing oldest unpinned entries.
-     */
+    //drop the oldest unpinned entries until we fit in max-history-size
     _enforceLimit() {
         const max = this.maxSize;
         while (this._entries.length > max) {
-            // Find the last unpinned entry and remove it
             let lastUnpinnedIdx = -1;
             for (let i = this._entries.length - 1; i >= 0; i--) {
                 if (!this._entries[i].pinned) {
@@ -252,16 +177,13 @@ export class HistoryManager {
                     this._deleteFile(removed.imagePath);
                 }
                 this._entries.splice(lastUnpinnedIdx, 1);
+            //everything left is pinned, nothing more to drop
             } else {
-                // All entries are pinned — nothing to remove
                 break;
             }
         }
     }
 
-    /**
-     * Load history from the JSON file on disk.
-     */
     _loadFromDisk() {
         try {
             if (!GLib.file_test(this._historyPath, GLib.FileTest.EXISTS)) {
@@ -290,9 +212,6 @@ export class HistoryManager {
         }
     }
 
-    /**
-     * Persist the current history to disk as JSON.
-     */
     _saveToDisk() {
         try {
             const json = JSON.stringify(
@@ -314,9 +233,6 @@ export class HistoryManager {
         }
     }
 
-    /**
-     * Delete a file from disk (used for image cleanup).
-     */
     _deleteFile(path) {
         try {
             const file = Gio.File.new_for_path(path);
@@ -328,9 +244,6 @@ export class HistoryManager {
         }
     }
 
-    /**
-     * Emit update event to all registered callbacks.
-     */
     _emitUpdate() {
         for (const cb of this._onUpdateCallbacks) {
             try {
@@ -341,9 +254,6 @@ export class HistoryManager {
         }
     }
 
-    /**
-     * Clean up resources.
-     */
     destroy() {
         this._onUpdateCallbacks = [];
         this._settings = null;

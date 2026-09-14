@@ -1,15 +1,8 @@
-/* ui/clipboardItem.js — Individual clipboard entry widget for GNOME Recall
- *
- * Renders a single clipboard entry with content preview, metadata,
- * and action buttons (pin, delete).
- */
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Graphene from 'gi://Graphene';
 import St from 'gi://St';
 
-// Type-to-icon mapping
 const TYPE_ICONS = {
     text: 'edit-paste-symbolic',
     link: 'web-browser-symbolic',
@@ -17,14 +10,10 @@ const TYPE_ICONS = {
     image: 'image-x-generic-symbolic',
 };
 
-/**
- * Format a timestamp as a relative time string.
- * @param {number} timestamp — Unix timestamp in ms
- * @returns {string}
- */
+//"5s ago", "3h ago", older than a week just shows the date
 function formatRelativeTime(timestamp) {
     const now = Date.now();
-    const diff = Math.floor((now - timestamp) / 1000); // seconds
+    const diff = Math.floor((now - timestamp) / 1000);
 
     if (diff < 5) return 'Just now';
     if (diff < 60) return `${diff}s ago`;
@@ -32,18 +21,13 @@ function formatRelativeTime(timestamp) {
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
 
-    // Older than a week — show date
     const date = new Date(timestamp);
     const month = date.toLocaleString('default', { month: 'short' });
     return `${month} ${date.getDate()}`;
 }
 
-/**
- * Truncate text to a max length with ellipsis.
- * Also collapses whitespace for a cleaner preview.
- */
+//collapse newlines/whitespace so multi line copies fit on one row
 function truncateText(text, maxLength) {
-    // Collapse whitespace and newlines
     let clean = text.replace(/\s+/g, ' ').trim();
     if (clean.length > maxLength) {
         return clean.substring(0, maxLength) + '…';
@@ -51,20 +35,8 @@ function truncateText(text, maxLength) {
     return clean;
 }
 
-/**
- * ClipboardItemWidget — A clickable row representing one clipboard entry.
- */
+//one row in the list: icon, preview text, meta line, pin + delete buttons
 export class ClipboardItemWidget {
-    /**
-     * @param {object} opts
-     * @param {import('../clipboard.js').ClipboardEntry} opts.entry
-     * @param {number} opts.maxPreviewLength
-     * @param {boolean} opts.showTimestamps
-     * @param {boolean} opts.isActive — Whether this is the current clipboard content
-     * @param {function(string)} opts.onSelect — Called with entry ID when clicked
-     * @param {function(string)} opts.onPin — Called with entry ID when pin is toggled
-     * @param {function(string)} opts.onDelete — Called with entry ID when delete is clicked
-     */
     constructor(opts) {
         this.entry = opts.entry;
         this._maxPreviewLength = opts.maxPreviewLength || 100;
@@ -80,13 +52,11 @@ export class ClipboardItemWidget {
     _build() {
         const entry = this.entry;
 
-        // Main container — a plain reactive row, NOT an St.Button. Nesting
-        // St.Buttons (pin/delete) inside an St.Button breaks on GNOME 47+
-        // because the parent's click gesture wins over the children's.
         let styleClass = 'recall-item popup-menu-item';
         if (this._isActive) styleClass += ' recall-item-active';
         if (entry.pinned) styleClass += ' recall-item-pinned';
 
+        //deliberately not an St.Button, nesting buttons breaks clicks on gnome 47+ (parent gesture wins)
         this.actor = new St.BoxLayout({
             style_class: styleClass,
             x_expand: true,
@@ -95,7 +65,7 @@ export class ClipboardItemWidget {
             reactive: true,
         });
 
-        // Select on release, unless the release landed on an action button
+        //fake the :active state ourselves since this isnt a real button
         this.actor.connect('button-press-event', () => {
             this.actor.add_style_pseudo_class('active');
             return Clutter.EVENT_PROPAGATE;
@@ -104,8 +74,7 @@ export class ClipboardItemWidget {
             this.actor.remove_style_pseudo_class('active');
             if (event.get_button() !== Clutter.BUTTON_PRIMARY)
                 return Clutter.EVENT_PROPAGATE;
-            // event.get_source() is null for button events on mutter 50,
-            // so test the release position against the action buttons' area.
+            //event.get_source() is null for mouse events on mutter 50, so check coords against the buttons area
             const [x, y] = event.get_coords();
             const actionsRect = this._actionsBox.get_transformed_extents();
             if (actionsRect.contains_point(new Graphene.Point({x, y})))
@@ -114,7 +83,6 @@ export class ClipboardItemWidget {
             return Clutter.EVENT_PROPAGATE;
         });
 
-        // Handle keyboard Enter
         this.actor.connect('key-press-event', (_actor, event) => {
             const symbol = event.get_key_symbol();
             if (symbol === Clutter.KEY_Return || symbol === Clutter.KEY_KP_Enter) {
@@ -124,7 +92,6 @@ export class ClipboardItemWidget {
             return Clutter.EVENT_PROPAGATE;
         });
 
-        // Horizontal layout: icon + content + actions
         const hbox = new St.BoxLayout({
             style_class: 'recall-item-content',
             x_expand: true,
@@ -132,7 +99,6 @@ export class ClipboardItemWidget {
         });
         this.actor.add_child(hbox);
 
-        // --- Type icon ---
         const iconName = TYPE_ICONS[entry.type] || TYPE_ICONS.text;
         let iconStyleClass = 'recall-item-icon';
         if (entry.type === 'image') iconStyleClass += ' recall-item-icon-image';
@@ -146,7 +112,7 @@ export class ClipboardItemWidget {
         });
         hbox.add_child(icon);
 
-        // --- Color swatch (for color type) ---
+        //little color square next to hex/rgb values
         if (entry.type === 'color') {
             const swatch = new St.Widget({
                 style_class: 'recall-color-swatch',
@@ -156,7 +122,6 @@ export class ClipboardItemWidget {
             hbox.add_child(swatch);
         }
 
-        // --- Content area (preview + metadata) ---
         const contentBox = new St.BoxLayout({
             style_class: 'recall-item-text-container',
             vertical: true,
@@ -165,7 +130,6 @@ export class ClipboardItemWidget {
         });
         hbox.add_child(contentBox);
 
-        // Preview text
         let previewText, previewStyleClass;
         if (entry.type === 'image') {
             previewText = entry.preview || 'Image';
@@ -180,11 +144,10 @@ export class ClipboardItemWidget {
             text: previewText,
             x_expand: true,
         });
-        previewLabel.clutter_text.ellipsize = 3; // Pango.EllipsizeMode.END
+        previewLabel.clutter_text.ellipsize = 3;
         previewLabel.clutter_text.line_wrap = false;
         contentBox.add_child(previewLabel);
 
-        // Metadata row (timestamp + type badge + pin indicator)
         const metaBox = new St.BoxLayout({
             style_class: 'recall-item-meta',
             vertical: false,
@@ -199,7 +162,6 @@ export class ClipboardItemWidget {
             metaBox.add_child(timeLabel);
         }
 
-        // Type badge (for links and colors)
         if (entry.type === 'link') {
             const badge = new St.Label({
                 style_class: 'recall-item-type-badge',
@@ -220,7 +182,7 @@ export class ClipboardItemWidget {
             metaBox.add_child(badge);
         }
 
-        // Pin indicator
+        //filled star in the accent color when pinned
         if (entry.pinned) {
             metaBox.add_child(new St.Icon({
                 style_class: 'recall-item-pin-badge',
@@ -229,7 +191,6 @@ export class ClipboardItemWidget {
             }));
         }
 
-        // --- Action buttons (pin + delete) ---
         const actionsBox = new St.BoxLayout({
             style_class: 'recall-item-actions',
             vertical: false,
@@ -238,7 +199,6 @@ export class ClipboardItemWidget {
         this._actionsBox = actionsBox;
         hbox.add_child(actionsBox);
 
-        // Pin/unpin button
         const pinBtn = new St.Button({
             style_class: entry.pinned ?
                 'recall-action-btn recall-action-btn-pinned' :
@@ -255,7 +215,6 @@ export class ClipboardItemWidget {
         });
         actionsBox.add_child(pinBtn);
 
-        // Delete button
         const deleteBtn = new St.Button({
             style_class: 'recall-action-btn recall-action-btn-delete',
             can_focus: true,
@@ -271,9 +230,6 @@ export class ClipboardItemWidget {
         actionsBox.add_child(deleteBtn);
     }
 
-    /**
-     * Clean up.
-     */
     destroy() {
         if (this.actor) {
             this.actor.destroy();

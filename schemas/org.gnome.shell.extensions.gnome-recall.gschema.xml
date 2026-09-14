@@ -3,14 +3,14 @@
   <schema id="org.gnome.shell.extensions.gnome-recall"
           path="/org/gnome/shell/extensions/gnome-recall/">
 
-    <!-- Keyboard shortcut to toggle the Recall popup -->
+    <!--keyboard shortcut to toggle the Recall popup-->
     <key name="toggle-shortcut" type="as">
       <default>['&lt;Super&gt;v']</default>
       <summary>Toggle Recall popup</summary>
       <description>Keyboard shortcut to open/close the clipboard history popup.</description>
     </key>
 
-    <!-- Maximum number of entries to keep in history -->
+    <!--maximum number of entries to keep in history-->
     <key name="max-history-size" type="i">
       <default>50</default>
       <summary>Maximum history size</summary>
@@ -18,7 +18,7 @@
       <range min="5" max="200"/>
     </key>
 
-    <!-- Maximum characters to show in text preview -->
+    <!--maximum characters to show in text preview-->
     <key name="max-preview-length" type="i">
       <default>100</default>
       <summary>Maximum preview length</summary>
@@ -26,49 +26,49 @@
       <range min="20" max="500"/>
     </key>
 
-    <!-- Clear history on boot -->
+    <!--clear history on boot-->
     <key name="clear-on-boot" type="b">
       <default>true</default>
       <summary>Clear on restart</summary>
       <description>Clear non-pinned clipboard history when GNOME Shell starts.</description>
     </key>
 
-    <!-- Enable image clipboard tracking -->
+    <!--enable image clipboard tracking-->
     <key name="enable-images" type="b">
       <default>true</default>
       <summary>Enable image support</summary>
       <description>Track image clipboard entries such as screenshots.</description>
     </key>
 
-    <!-- Show relative timestamps -->
+    <!--show relative timestamps-->
     <key name="show-timestamps" type="b">
       <default>true</default>
       <summary>Show timestamps</summary>
       <description>Show relative timestamps on clipboard entries (e.g. "2 min ago").</description>
     </key>
 
-    <!-- Auto-paste when selecting an entry -->
+    <!--auto-paste when selecting an entry-->
     <key name="paste-on-select" type="b">
       <default>true</default>
       <summary>Paste on select</summary>
       <description>Automatically simulate Ctrl+V after selecting a clipboard entry.</description>
     </key>
 
-    <!-- Private mode (pause clipboard monitoring) -->
+    <!--private mode (pause clipboard monitoring)-->
     <key name="private-mode" type="b">
       <default>false</default>
       <summary>Private mode</summary>
       <description>When enabled, clipboard changes are not recorded to history.</description>
     </key>
 
-    <!-- Show notification on copy -->
+    <!--show notification on copy-->
     <key name="show-notifications" type="b">
       <default>false</default>
       <summary>Show notifications</summary>
       <description>Show a brief notification when a new item is copied to the clipboard.</description>
     </key>
 
-    <!-- Popup window width -->
+    <!--popup window width-->
     <key name="window-width" type="i">
       <default>420</default>
       <summary>Window width</summary>
@@ -76,7 +76,7 @@
       <range min="300" max="800"/>
     </key>
 
-    <!-- Popup window height -->
+    <!--popup window height-->
     <key name="window-height" type="i">
       <default>520</default>
       <summary>Window height</summary>
@@ -84,14 +84,14 @@
       <range min="300" max="900"/>
     </key>
 
-    <!-- Confirm before clearing all -->
+    <!--confirm before clearing all-->
     <key name="confirm-clear" type="b">
       <default>true</default>
       <summary>Confirm clear</summary>
       <description>Show a confirmation dialog before clearing the entire clipboard history.</description>
     </key>
 
-    <!-- Keep pinned items on top -->
+    <!--keep pinned items on top-->
     <key name="pinned-on-top" type="b">
       <default>true</default>
       <summary>Pinned items on top</summary>

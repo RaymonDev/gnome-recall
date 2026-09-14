@@ -1,10 +1,3 @@
-/* ui/recallDialog.js — Main popup dialog for GNOME Recall
- *
- * A centered, modal popup that shows clipboard history with search,
- * pin, delete, and clear-all functionality. Styled to feel native
- * to GNOME while matching the Windows 11 Win+V experience.
- */
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Graphene from 'gi://Graphene';
@@ -17,16 +10,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { SearchBar } from './searchBar.js';
 import { ClipboardItemWidget } from './clipboardItem.js';
 
-/**
- * RecallDialog — The main clipboard history popup.
- */
+//the super+v popup, one full screen container holds the backdrop + the actual dialog
 export class RecallDialog {
-    /**
-     * @param {object} opts
-     * @param {import('../historyManager.js').HistoryManager} opts.historyManager
-     * @param {import('../clipboard.js').ClipboardMonitor} opts.clipboardMonitor
-     * @param {Gio.Settings} opts.settings
-     */
     constructor(opts) {
         this._historyManager = opts.historyManager;
         this._clipboardMonitor = opts.clipboardMonitor;
@@ -39,20 +24,15 @@ export class RecallDialog {
         this._build();
     }
 
-    /**
-     * Build the full dialog UI structure.
-     */
     _build() {
-        // Single full-screen container that owns the modal grab. Both the
-        // backdrop and the dialog live inside it so input to either is
-        // delivered normally (like the shell's own ModalDialog).
+        //this is what gets the modal grab, same trick gnome's own ModalDialog uses
         this._container = new St.Widget({
             layout_manager: new Clutter.BinLayout(),
             reactive: true,
             visible: false,
         });
 
-        // --- Backdrop (semi-transparent overlay) ---
+        //click outside closes, its a sibling of the dialog on purpose (see note below)
         this._backdrop = new St.Widget({
             style_class: 'recall-backdrop',
             reactive: true,
@@ -65,10 +45,10 @@ export class RecallDialog {
         });
         this._container.add_child(this._backdrop);
 
-        // --- Main dialog container ---
         const width = this._settings.get_int('window-width');
         const height = this._settings.get_int('window-height');
 
+        //popup-menu-content is the shells own class, gives us the theme bg/border/radius for free
         this._dialog = new St.BoxLayout({
             style_class: 'recall-dialog popup-menu-content',
             vertical: true,
@@ -80,11 +60,9 @@ export class RecallDialog {
         });
         this._container.add_child(this._dialog);
 
-        // NOTE: never connect a button-press-event handler returning
-        // EVENT_STOP on an ancestor of St.Buttons — on GNOME 47+ that
-        // cancels the ClutterClickGesture and the buttons stop working.
+        //dont ever add a button-press handler returning EVENT_STOP on a parent of St.Buttons,
+        //on gnome 47+ it cancels the click gesture and every button inside goes dead
 
-        // --- Header ---
         const header = new St.BoxLayout({
             style_class: 'recall-header',
             vertical: false,
@@ -99,7 +77,7 @@ export class RecallDialog {
         });
         header.add_child(titleLabel);
 
-        // Private mode indicator
+        //small badge so you notice private mode is on
         this._privateIndicator = new St.BoxLayout({
             style_class: 'recall-private-indicator',
             visible: this._settings.get_boolean('private-mode'),
@@ -115,13 +93,11 @@ export class RecallDialog {
         }));
         header.add_child(this._privateIndicator);
 
-        // Header buttons
         const headerBtns = new St.BoxLayout({
             style_class: 'recall-header-buttons',
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        // Clear All button
         const clearBtn = new St.Button({
             style_class: 'recall-header-btn recall-header-btn-destructive button',
             label: 'Clear All',
@@ -136,7 +112,6 @@ export class RecallDialog {
         });
         headerBtns.add_child(clearBtn);
 
-        // Settings button
         const settingsBtn = new St.Button({
             style_class: 'recall-action-btn recall-header-icon-btn',
             can_focus: true,
@@ -154,20 +129,17 @@ export class RecallDialog {
         header.add_child(headerBtns);
         this._dialog.add_child(header);
 
-        // --- Search bar ---
         this._searchBar = new SearchBar({
             onSearch: (query) => this._onSearch(query),
         });
         this._dialog.add_child(this._searchBar.actor);
 
-        // --- Separator ---
         const separator = new St.Widget({
             style_class: 'recall-separator',
             x_expand: true,
         });
         this._dialog.add_child(separator);
 
-        // --- Scrollable list ---
         this._scrollView = new St.ScrollView({
             style_class: 'recall-scroll-view',
             x_expand: true,
@@ -182,7 +154,6 @@ export class RecallDialog {
         this._scrollView.set_child(this._listBox);
         this._dialog.add_child(this._scrollView);
 
-        // --- Empty state (shown when no entries) ---
         this._emptyState = new St.BoxLayout({
             style_class: 'recall-empty-state',
             vertical: true,
@@ -207,7 +178,6 @@ export class RecallDialog {
         }));
         this._dialog.add_child(this._emptyState);
 
-        // --- Footer ---
         this._footer = new St.BoxLayout({
             style_class: 'recall-footer',
             x_expand: true,
@@ -226,10 +196,9 @@ export class RecallDialog {
         this._footer.add_child(shortcutHint);
         this._dialog.add_child(this._footer);
 
-        // Add to the UI group
         Main.layoutManager.addTopChrome(this._container);
 
-        // Register for history updates
+        //pin/delete/clear all trigger this, just rebuild the list
         this._historyManager.onUpdate(() => {
             if (this._isOpen) {
                 this._refreshList();
@@ -237,9 +206,6 @@ export class RecallDialog {
         });
     }
 
-    /**
-     * Toggle the dialog open/closed.
-     */
     toggle() {
         if (this._isOpen) {
             this.close();
@@ -248,14 +214,11 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Open the dialog.
-     */
     open() {
         if (this._isOpen) return;
         this._isOpen = true;
 
-        // Cover the primary monitor; BinLayout centers the dialog inside
+        //cover the primary monitor, BinLayout centers the dialog for us
         const monitor = Main.layoutManager.primaryMonitor;
         this._container.set_position(monitor.x, monitor.y);
         this._container.set_size(monitor.width, monitor.height);
@@ -264,14 +227,11 @@ export class RecallDialog {
             this._settings.get_int('window-height')
         );
 
-        // Update private mode indicator
         this._privateIndicator.visible = this._settings.get_boolean('private-mode');
 
-        // Populate the list
         this._searchBar.clear();
         this._refreshList();
 
-        // Show with animation
         this._container.visible = true;
         this._backdrop.opacity = 0;
         this._backdrop.ease({
@@ -292,10 +252,9 @@ export class RecallDialog {
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
         });
 
-        // Grab keyboard focus
+        //tiny delay so the grab is in place before we move focus
         this._grabModal();
 
-        // Focus search bar after a small delay
         this._clearTimeout('_focusTimeoutId');
         this._focusTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             this._focusTimeoutId = 0;
@@ -313,9 +272,6 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Close the dialog.
-     */
     close() {
         if (!this._isOpen) return;
         this._isOpen = false;
@@ -324,7 +280,6 @@ export class RecallDialog {
         this._hideClearConfirmation();
         this._clearTimeout('_focusTimeoutId');
 
-        // Animate out
         this._backdrop.ease({
             opacity: 0,
             duration: 150,
@@ -346,23 +301,17 @@ export class RecallDialog {
         });
     }
 
-    /**
-     * Grab modal input.
-     */
+    //pushModal returns a grab handle and popModal wants that exact object back
     _grabModal() {
         this._modal = Main.pushModal(this._container, {
             actionMode: Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
         });
 
-        // Handle key events for the dialog
         this._keyPressId = this._container.connect('key-press-event', (_actor, event) => {
             return this._onKeyPress(event);
         });
     }
 
-    /**
-     * Release modal input.
-     */
     _ungrabModal() {
         if (this._keyPressId) {
             this._container.disconnect(this._keyPressId);
@@ -372,25 +321,22 @@ export class RecallDialog {
         if (this._modal) {
             const grab = this._modal;
             this._modal = null;
+            //if this throws the grab would stay stuck and you'd have to reboot, so dismiss it manually
             try {
                 Main.popModal(grab);
             } catch (e) {
-                // Never leave the compositor grab stuck: dismiss it directly.
                 console.error(`[Recall] popModal failed: ${e.message}`);
                 grab.dismiss();
             }
         }
     }
 
-    /**
-     * Handle key press events in the dialog.
-     */
     _onKeyPress(event) {
         const symbol = event.get_key_symbol();
 
         switch (symbol) {
+            //esc backs out one layer at a time: confirm dialog -> search text -> popup
             case Clutter.KEY_Escape:
-                // Dismiss confirmation first, then clear search, then close
                 if (this._confirmOverlay) {
                     this._hideClearConfirmation();
                 } else if (this._searchBar.getText().length > 0) {
@@ -412,8 +358,8 @@ export class RecallDialog {
                 this._navigateList(1);
                 return Clutter.EVENT_STOP;
 
+            //typing anywhere jumps you into the search box
             default:
-                // If user starts typing, redirect to search bar
                 if (symbol >= 32 && symbol <= 126 && !this._searchBar.entry.has_key_focus()) {
                     this._searchBar.focus();
                 }
@@ -421,13 +367,9 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Navigate the list by delta (1 = down, -1 = up).
-     */
     _navigateList(delta) {
         if (this._itemWidgets.length === 0) return;
 
-        // Find currently focused item
         let currentIdx = -1;
         for (let i = 0; i < this._itemWidgets.length; i++) {
             if (this._itemWidgets[i].actor.has_key_focus()) {
@@ -438,7 +380,6 @@ export class RecallDialog {
 
         let nextIdx;
         if (currentIdx < 0) {
-            // No item focused — go to first
             nextIdx = delta > 0 ? 0 : this._itemWidgets.length - 1;
         } else {
             nextIdx = currentIdx + delta;
@@ -448,14 +389,11 @@ export class RecallDialog {
 
         global.stage.set_key_focus(this._itemWidgets[nextIdx].actor);
 
-        // Ensure the focused item is visible in the scroll view
         const item = this._itemWidgets[nextIdx].actor;
         this._ensureVisible(item);
     }
 
-    /**
-     * Scroll so that the given actor is visible within the scroll view.
-     */
+    //scroll the list so the focused row is actually on screen
     _ensureVisible(actor) {
         const adj = this._scrollView.vadjustment ?? this._scrollView.vscroll?.adjustment;
         if (!adj) return;
@@ -474,17 +412,10 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Handle search text changes.
-     */
     _onSearch(query) {
         this._refreshList(query);
     }
 
-    /**
-     * Refresh the list of items.
-     * @param {string} [query] — Optional search query
-     */
     _refreshList(query) {
         this._clearList();
 
@@ -494,7 +425,6 @@ export class RecallDialog {
             : this._historyManager.getEntries();
         const totalCount = this._historyManager.length;
 
-        // Update footer
         const pinnedCount = this._historyManager.getPinnedEntries().length;
         if (pinnedCount > 0) {
             this._footerLabel.set_text(`${totalCount} items · ${pinnedCount} pinned`);
@@ -503,7 +433,6 @@ export class RecallDialog {
         }
 
         if (entries.length === 0) {
-            // Show empty state
             this._scrollView.visible = false;
             this._emptyState.visible = true;
             return;
@@ -512,7 +441,6 @@ export class RecallDialog {
         this._scrollView.visible = true;
         this._emptyState.visible = false;
 
-        // Add section headers if we have both pinned and unpinned
         const hasPinned = entries.some(e => e.pinned);
         const hasUnpinned = entries.some(e => !e.pinned);
         const pinnedOnTop = this._settings.get_boolean('pinned-on-top');
@@ -524,7 +452,7 @@ export class RecallDialog {
         const showTimestamps = this._settings.get_boolean('show-timestamps');
 
         for (const entry of entries) {
-            // Section headers
+            //only show the pinned/recent headers when both groups exist
             if (pinnedOnTop && hasPinned && hasUnpinned) {
                 if (entry.pinned && !addedPinnedHeader) {
                     addedPinnedHeader = true;
@@ -550,9 +478,6 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Add a section header label.
-     */
     _addSectionHeader(text, iconName) {
         const header = new St.BoxLayout({
             style_class: 'recall-section-header',
@@ -571,9 +496,6 @@ export class RecallDialog {
         this._listBox.add_child(header);
     }
 
-    /**
-     * Clear all item widgets from the list.
-     */
     _clearList() {
         for (const widget of this._itemWidgets) {
             widget.destroy();
@@ -582,9 +504,6 @@ export class RecallDialog {
         this._listBox.destroy_all_children();
     }
 
-    /**
-     * Handle selecting an entry — copy to clipboard and close.
-     */
     _onSelectEntry(id) {
         const entry = this._historyManager.getEntry(id);
         if (!entry) return;
@@ -595,9 +514,9 @@ export class RecallDialog {
             this._clipboardMonitor.setClipboardText(entry.content);
         }
 
+        //wait for the popup to close and focus to go back before faking ctrl+v
         this.close();
 
-        // If paste-on-select is enabled, simulate Ctrl+V after a short delay
         if (this._settings.get_boolean('paste-on-select')) {
             this._clearTimeout('_pasteTimeoutId');
             this._pasteTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
@@ -608,34 +527,24 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Handle toggling pin on an entry.
-     */
     _onTogglePin(id) {
         this._historyManager.togglePin(id);
     }
 
-    /**
-     * Handle deleting an entry.
-     */
     _onDeleteEntry(id) {
         this._historyManager.deleteEntry(id);
     }
 
-    /**
-     * Show a confirmation dialog before clearing all history.
-     */
     _showClearConfirmation() {
         if (this._confirmOverlay) return;
 
-        // Full-screen layer over the dialog; the scrim is a *sibling* of the
-        // confirm box so its click handler can't interfere with the buttons.
         this._confirmOverlay = new St.Widget({
             layout_manager: new Clutter.BinLayout(),
             x_expand: true,
             y_expand: true,
         });
 
+        //scrim is a sibling of the box, not a parent, so its click handler cant kill the buttons
         const scrim = new St.Widget({
             style_class: 'recall-confirm-backdrop',
             reactive: true,
@@ -705,9 +614,6 @@ export class RecallDialog {
         cancelBtn.grab_key_focus();
     }
 
-    /**
-     * Hide the clear confirmation overlay.
-     */
     _hideClearConfirmation() {
         if (this._confirmOverlay) {
             this._confirmOverlay.destroy();
@@ -717,9 +623,7 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Simulate a Ctrl+V paste keystroke.
-     */
+    //fakes ctrl+v with a virtual keyboard, keep the device around or it can get gc'd before the keys land
     _simulatePaste() {
         try {
             if (!this._virtualKeyboard) {
@@ -740,16 +644,10 @@ export class RecallDialog {
         }
     }
 
-    /**
-     * Whether the dialog is currently open.
-     */
     get isOpen() {
         return this._isOpen;
     }
 
-    /**
-     * Clean up all resources.
-     */
     destroy() {
         this.close();
         this._clearTimeout('_focusTimeoutId');

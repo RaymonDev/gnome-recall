@@ -1,11 +1,3 @@
-/* extension.js — Main entry point for GNOME Recall
- *
- * A Windows 11-style clipboard history extension for GNOME Shell.
- * Press Super+V to browse, search, pin, and paste from your clipboard history.
- *
- * Compatible with GNOME 46-50 (Ubuntu 24.04 through 26.04).
- */
-
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -15,17 +7,18 @@ import { ClipboardMonitor } from './clipboard.js';
 import { HistoryManager } from './historyManager.js';
 import { RecallDialog } from './ui/recallDialog.js';
 
+//main entry point, just wires the clipboard monitor, history and popup together
+
 export default class RecallExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._settingsChangedIds = [];
 
-        // Initialize clipboard monitor
+        //watches the clipboard and gives us entries when something new gets copied
         this._clipboardMonitor = new ClipboardMonitor({
-            cacheDir: undefined, // uses default
+            cacheDir: undefined,
         });
 
-        // Apply settings to monitor
         this._clipboardMonitor.setPrivateMode(
             this._settings.get_boolean('private-mode')
         );
@@ -33,22 +26,20 @@ export default class RecallExtension extends Extension {
             this._settings.get_boolean('enable-images')
         );
 
-        // Initialize history manager
+        //stores everything on disk and handles pinning, limits, search etc
         this._historyManager = new HistoryManager({
             settings: this._settings,
         });
 
-        // Connect clipboard monitor to history manager
+        //every copy goes straight into history
         this._clipboardMonitor.onChange((entry) => {
             this._historyManager.addEntry(entry);
 
-            // Show notification if enabled
             if (this._settings.get_boolean('show-notifications')) {
                 this._showNotification(entry);
             }
         });
 
-        // Initialize the popup dialog
         this._dialog = new RecallDialog({
             historyManager: this._historyManager,
             clipboardMonitor: this._clipboardMonitor,
@@ -56,7 +47,7 @@ export default class RecallExtension extends Extension {
             openPreferences: () => this.openPreferences(),
         });
 
-        // Register the keybinding
+        //super+v by default, mutter rebinds it by itself if the setting changes
         Main.wm.addKeybinding(
             'toggle-shortcut',
             this._settings,
@@ -67,33 +58,27 @@ export default class RecallExtension extends Extension {
             }
         );
 
-        // Watch for settings changes
         this._connectSettings();
 
-        // Start monitoring the clipboard
         this._clipboardMonitor.start();
     }
 
+    //gnome requires everything we created to be torn down here
     disable() {
-        // Remove keybinding
         Main.wm.removeKeybinding('toggle-shortcut');
 
-        // Disconnect settings
         this._disconnectSettings();
 
-        // Stop clipboard monitor
         if (this._clipboardMonitor) {
             this._clipboardMonitor.destroy();
             this._clipboardMonitor = null;
         }
 
-        // Destroy dialog
         if (this._dialog) {
             this._dialog.destroy();
             this._dialog = null;
         }
 
-        // Destroy history manager
         if (this._historyManager) {
             this._historyManager.destroy();
             this._historyManager = null;
@@ -102,9 +87,7 @@ export default class RecallExtension extends Extension {
         this._settings = null;
     }
 
-    /**
-     * Connect to GSettings change signals for live updates.
-     */
+    //these two need to reach the monitor live, the rest are read when the popup opens
     _connectSettings() {
         const watchKeys = [
             {
@@ -131,9 +114,6 @@ export default class RecallExtension extends Extension {
         }
     }
 
-    /**
-     * Disconnect all settings change handlers.
-     */
     _disconnectSettings() {
         if (this._settings && this._settingsChangedIds) {
             for (const id of this._settingsChangedIds) {
@@ -143,9 +123,6 @@ export default class RecallExtension extends Extension {
         }
     }
 
-    /**
-     * Show a brief notification when something is copied.
-     */
     _showNotification(entry) {
         let text;
         if (entry.type === 'image') {

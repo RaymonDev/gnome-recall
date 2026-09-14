@@ -1,37 +1,23 @@
-/* ui/searchBar.js — Search bar component for GNOME Recall
- *
- * A text input with search icon, real-time filtering,
- * and match count display.
- */
-
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 
-/**
- * SearchBar — Search input with result count.
- */
+//search box at the top of the popup, calls onSearch on every keystroke
 export class SearchBar {
-    /**
-     * @param {object} opts
-     * @param {function(string)} opts.onSearch — Called on every text change with the query string
-     */
     constructor(opts = {}) {
         this._onSearchCallback = opts.onSearch || (() => {});
 
-        // Container
         this.actor = new St.BoxLayout({
             style_class: 'recall-search-container',
             vertical: true,
             x_expand: true,
         });
 
-        // Row with search entry and count label
         const row = new St.BoxLayout({
             x_expand: true,
             vertical: false,
         });
 
-        // Search entry
+        //search-entry class = same pill style as the activities search
         this.entry = new St.Entry({
             style_class: 'recall-search-entry search-entry',
             hint_text: 'Search clipboard history…',
@@ -48,7 +34,7 @@ export class SearchBar {
             this._onSearchCallback(this.entry.get_text());
         });
 
-        // Handle Escape key to clear search
+        //esc clears the text first, if its already empty we let it bubble up and close the popup
         this.entry.get_clutter_text().connect('key-press-event', (_actor, event) => {
             const symbol = event.get_key_symbol();
             if (symbol === Clutter.KEY_Escape) {
@@ -64,30 +50,18 @@ export class SearchBar {
         this.actor.add_child(row);
     }
 
-    /**
-     * Clear the search text.
-     */
     clear() {
         this.entry.set_text('');
     }
 
-    /**
-     * Focus the search entry.
-     */
     focus() {
         global.stage.set_key_focus(this.entry);
     }
 
-    /**
-     * Get current search text.
-     */
     getText() {
         return this.entry.get_text();
     }
 
-    /**
-     * Clean up.
-     */
     destroy() {
         this.actor.destroy();
     }
