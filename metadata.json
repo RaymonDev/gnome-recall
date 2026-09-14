@@ -1,0 +1,9 @@
+{
+  "uuid": "gnome-recall@raymondev",
+  "name": "Recall — Clipboard History",
+  "description": "A Windows 11-style clipboard history manager for GNOME. Press Super+V to browse, search, pin, and paste from your clipboard history.",
+  "shell-version": ["46", "47", "48", "49", "50"],
+  "version": 1,
+  "url": "https://github.com/RaymonDev/gnome-recall",
+  "settings-schema": "org.gnome.shell.extensions.gnome-recall"
+}
